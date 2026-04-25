@@ -1,4 +1,4 @@
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     description TEXT,
@@ -9,7 +9,7 @@ CREATE TABLE tasks (
     completion_date TIMESTAMP
 );
 
-CREATE TABLE task_dependencies (
+CREATE TABLE IF NOT EXISTS task_dependencies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id INTEGER NOT NULL,
     depends_on_task_id INTEGER NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE task_dependencies (
     CHECK(depends_on_task_id != task_id)
 );
 
-CREATE TABLE logs (
+CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id INTEGER NOT NULL,
     action TEXT CHECK(action IN ('created', 'updated', 'deleted', 'status_changed')) NOT NULL,
