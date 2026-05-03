@@ -53,3 +53,47 @@ class SQLiteTaskRepository(TaskRepository):
                 tasks.append(task)
 
         return tasks
+    
+    def update(self, task: Task) -> Task:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """ 
+                UPDATE tasks
+                SET title = ?, description = ?, priority = ?, status = ?, completion_date = ?
+                WHERE id = ?
+                """,
+                (
+                    task.title,
+                    task.description,
+                    task.priority,
+                    task.status.value,
+                    task.completion_date,
+                    task.id
+                ),
+            )
+            conn.commit()
+        return task
+    
+    def get_by_id(self, task_id: int) -> Task:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+            row = cursor.fetchone()
+
+            if row is None:
+                return None
+
+            task = Task(
+                title=row["title"],
+                priority=row["priority"],
+                description=row["description"],
+                status=TaskStatus(row["status"]),
+            )
+
+            task.id = row["id"]
+            task.created_date = row["creation_date"]
+            task.deadline = row["deadline"]
+            task.completion_date = row["completion_date"]
+
+            return task

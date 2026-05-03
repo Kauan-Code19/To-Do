@@ -1,6 +1,12 @@
+from rich.progress import Task
+
 from app.use_cases.services.log_service import LogService
 from app.use_cases.task.create_task import CreateTask
 from app.use_cases.task.list_tasks import ListTasks
+from app.use_cases.task.update_task import UpdateTask
+from app.use_cases.task.update_task import UpdateTask
+from domain.entities.log import Log
+from domain.enums.task_status import TaskStatus
 from infrastructure.repositories.sqllite_log_repository import SQLiteLogRepository
 from infrastructure.repositories.sqllite_task_repository import SQLiteTaskRepository
 from rich.console import Console
@@ -13,7 +19,8 @@ def show_menu():
     print("\n[bold cyan]=== MENU ===[/]")
     print("[green]1[/] - Create task")
     print("[green]2[/] - List tasks")
-    print("[yellow]3[/] - List logs")
+    print("[green]3[/] - Update task")
+    print("[yellow]4[/] - List logs")
     print("[red]0[/] - Exit")
 
 
@@ -23,7 +30,7 @@ def create_task_flow(use_case: CreateTask):
     description = input("Description (optional): ")
 
     try:
-        task = use_case.execute(
+        task: Task = use_case.execute(
             title=title,
             priority=priority,
             description=description or None,
@@ -36,7 +43,7 @@ def create_task_flow(use_case: CreateTask):
 
 
 def list_tasks_flow(use_case: ListTasks):
-    tasks = use_case.execute()
+    tasks: list[Task] = use_case.execute()
 
     if not tasks:
         console.print("[bold red]No tasks found.[/]")
@@ -72,7 +79,7 @@ def list_tasks_flow(use_case: ListTasks):
 
 
 def list_logs_flow(service: LogService):
-    logs = service.list_logs()
+    logs: list[Log] = service.list_logs()
 
     if not logs:
         console.print("[bold red]No logs found.[/]")
@@ -94,12 +101,67 @@ def list_logs_flow(service: LogService):
         )
 
     console.print(table)
+    
+def update_task_flow(update_use_case: UpdateTask, list_use_case: ListTasks):
+    list_tasks_flow(list_use_case)
 
+    task_id = int(input("\nEnter task ID to update: "))
+    
+    title = input("New title (enter to skip): ")
+    priority = input("New priority (enter to skip): ")
+    description = input("New description (enter to skip): ")
+    status_input = input(f"New status ({TaskStatus.PENDING.value}/{TaskStatus.IN_PROGRESS.value}/{TaskStatus.COMPLETED.value}): ")
+
+    status = None
+    if status_input:
+        try:
+            status = TaskStatus(status_input)
+        except ValueError:
+            console.print("[red]Invalid status[/]")
+            return
+
+    task: Task = update_use_case.execute(
+        task_id=task_id,
+        title=title or None,
+        priority=int(priority) if priority else None,
+        description=description or None,
+        status=TaskStatus(status) if status else None
+    )
+    
+    console.print("\n[green]Task updated successfully![/]\n")
+
+    table = Table(title="✅ Updated Task")
+
+    table.add_column("ID", style="cyan", justify="right")
+    table.add_column("Title")
+    table.add_column("Priority", justify="center")
+    table.add_column("Status", justify="center")
+    table.add_column("Created at")
+
+    status_colors = {
+        "pending": "yellow",
+        "in_progress": "blue",
+        "completed": "green",
+    }
+
+    status_value = task.status.value
+    color = status_colors.get(status_value, "white")
+
+    table.add_row(
+        str(task.id),
+        task.title,
+        str(task.priority),
+        f"[{color}]{status_value}[/]",
+        str(task.created_date),
+    )
+
+    console.print(table)
 
 def main():
     sqlite_task_repo = SQLiteTaskRepository()
     create_task = CreateTask(sqlite_task_repo)
     list_tasks = ListTasks(sqlite_task_repo)
+    update_task = UpdateTask(sqlite_task_repo)
 
     sqlite_log_repo = SQLiteLogRepository()
     log_service = LogService(sqlite_log_repo)
@@ -116,6 +178,9 @@ def main():
             list_tasks_flow(list_tasks)
 
         elif choice == "3":
+            update_task_flow(update_task, list_tasks)
+
+        elif choice == "4":
             list_logs_flow(log_service)
 
         elif choice == "0":

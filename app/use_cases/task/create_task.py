@@ -1,6 +1,5 @@
 from app.interfaces.task_repository import TaskRepository
 from domain.entities.task import Task
-from domain.entities.log import Log
 from app.container import container
 
 class CreateTask:
